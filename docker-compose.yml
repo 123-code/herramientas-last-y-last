@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # Vulnerable Flask Application
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    networks:
+      - security-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # OWASP ZAP Scanner
+  zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    ports:
+      - "18080:8080"
+      - "18090:8090"
+    networks:
+      - security-net
+    volumes:
+      - ./reports:/zap/reports
+    command: zap.sh -daemon -host 0.0.0.0 -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true -config api.key=zap-api-key
+    depends_on:
+      webapp:
+        condition: service_healthy
+
+networks:
+  security-net:
+    driver: bridge

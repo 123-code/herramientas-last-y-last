@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: vulnerable-webapp-svc
+  labels:
+    app: vulnerable-webapp
+spec:
+  selector:
+    app: vulnerable-webapp
+  ports:
+  - protocol: TCP
+    port: 5000
+    targetPort: 5000
+  type: ClusterIP

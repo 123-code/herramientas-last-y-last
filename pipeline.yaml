@@ -1,0 +1,83 @@
+name: Security Pipeline Demo
+# Este archivo define la versión CI/CD del pipeline "security_pipeline.py"
+# Se ejecutará automáticamente en cada push a la rama principal.
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:  # Permite ejecución manual desde la interfaz de GitHub
+
+jobs:
+  security-pipeline:
+    name: SAST + DAST Security Pipeline
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ------------------------------------------------------------------
+      # FASE DE PREPARACIÓN
+      # ------------------------------------------------------------------
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install bandit
+
+      - name: Create Reports Directory
+        run: mkdir -p reports
+
+      # ------------------------------------------------------------------
+      # FASE 1: SAST (Static Analysis with Bandit)
+      # ------------------------------------------------------------------
+      - name: Run SAST Scan (Bandit)
+        # Ejecuta Bandit y guarda resultados en JSON y HTML
+        # '|| true' asegura que el pipeline no se detenga si encuentra vulnerabilidades
+        run: |
+          echo "Runing SAST detection..."
+          python -m bandit -r app.py -f json -o reports/bandit_report.json || true
+          python -m bandit -r app.py -f html -o reports/bandit_report.html || true
+          python -m bandit -r app.py -f txt
+
+      # ------------------------------------------------------------------
+      # FASE 2: INICIAR APLICACIÓN
+      # ------------------------------------------------------------------
+      - name: Start Target Application
+        # Iniciamos la app Flask en segundo plano (&)
+        run: |
+          nohup python app.py > flask.log 2>&1 &
+          echo "Waiting for application to start..."
+          sleep 5
+          cat flask.log
+
+      # ------------------------------------------------------------------
+      # FASE 3: DAST (Dynamic Analysis with OWASP ZAP)
+      # ------------------------------------------------------------------
+      - name: Run DAST Scan (OWASP ZAP)
+        uses: zaproxy/action-baseline@v0.11.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: 'http://localhost:5000'
+          # Guardar reporte en formato HTML
+          cmd_options: '-a' 
+          # Nota: Esta acción genera sus propios reportes y los sube a "issues" por defecto.
+          # También podemos configurarla para fallar el build si encuentra alertas graves.
+        continue-on-error: true
+
+      # ------------------------------------------------------------------
+      # FASE 4: GUARDAR REPORTES (ARTIFACTS)
+      # ------------------------------------------------------------------
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v3
+        if: always() # Ejecutar siempre, incluso si fallan los pasos anteriores
+        with:
+          name: security-scan-reports
+          path: |
+            reports/
+            zap-execution-report.html

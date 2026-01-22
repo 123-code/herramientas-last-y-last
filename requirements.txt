@@ -1,0 +1,4 @@
+flask==3.0.0
+bandit==1.7.6
+python-owasp-zap-v2.4==0.0.21
+requests==2.31.0
