@@ -19,4 +19,23 @@ spec:
         image: ghcr.io/123-code/herramientas-last-y-last/webapp:latest
         ports:
         - containerPort: 5000
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
