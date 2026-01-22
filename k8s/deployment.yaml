@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: webapp
-        image: security-pipeline-demo-webapp:latest
+        image: ghcr.io/123-code/herramientas-last-y-last/webapp:latest
         ports:
         - containerPort: 5000
         imagePullPolicy: IfNotPresent
